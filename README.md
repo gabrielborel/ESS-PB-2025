@@ -63,6 +63,7 @@ Frontend: `http://localhost:3000`
 
 ## Endpoints
 
+**Livros**
 ```
 GET    /api/books       - lista todos
 GET    /api/books/{id}  - busca por id
@@ -71,23 +72,38 @@ PUT    /api/books/{id}  - atualiza
 DELETE /api/books/{id}  - deleta
 ```
 
+**Histórico de atualizações do livro**
+```
+GET    /api/books/{id}/history  - histórico completo do livro
+```
+
 ## Estrutura
 
 ```
 books-management-api/
 ├── src/main/java/.../books_management/
-│   ├── application/    - services, DTOs, mappers
-│   ├── domain/         - entidades, repositories
-│   ├── presentation/   - controllers
-│   └── config/         - configurações
+│   ├── application/       - services, DTOs, mappers
+│   │   ├── dto/
+│   │   ├── mapper/
+│   │   └── service/
+│   ├── domain/            - entidades, repositories, exceções
+│   │   ├── model/
+│   │   ├── repository/
+│   │   └── exception/
+│   ├── presentation/      - controllers, tratamento de exceções
+│   │   ├── controller/
+│   │   └── exception/
+│   └── infrastructure/    - configurações, listeners, eventos
+│       ├── config/        - (CORS, etc)
+│       └── listener/      - (auditoria)
 ├── src/main/resources/
 ├── Dockerfile
 └── pom.xml
 
 books-management-frontend/
 ├── src/
-│   ├── components/     - componentes React
-│   ├── services/       - chamadas API
+│   ├── components/        - componentes React
+│   ├── services/          - chamadas API
 │   └── App.jsx
 ├── Dockerfile
 └── vite.config.js
@@ -101,6 +117,8 @@ books-management-frontend/
 - Listagem em tabela
 - Formulário com validação
 - Tratamento de erros
+- Histórico de alterações (auditoria)
+- Rastreamento automático de mudanças
 
 ## Notas
 

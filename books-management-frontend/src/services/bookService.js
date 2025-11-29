@@ -54,3 +54,11 @@ export const deleteBook = async (id) => {
     throw new Error('Erro ao excluir livro')
   }
 }
+
+export const getBookHistory = async (id) => {
+  const response = await fetch(`${API_BASE_URL}/${id}/history`)
+  if (!response.ok) {
+    throw new Error('Erro ao buscar histórico do livro')
+  }
+  return response.json()
+}

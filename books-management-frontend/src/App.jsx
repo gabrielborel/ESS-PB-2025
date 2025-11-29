@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import BookList from './components/BookList'
 import BookForm from './components/BookForm'
 import ConfirmDeleteModal from './components/ConfirmDeleteModal'
+import BookHistoryModal from './components/BookHistoryModal'
 import { getAllBooks, createBook, updateBook, deleteBook } from './services/bookService'
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, book: null })
+  const [historyModal, setHistoryModal] = useState({ isOpen: false, bookId: null })
 
   useEffect(() => {
     loadBooks()
@@ -80,6 +82,14 @@ function App() {
     setEditingBook(null)
   }
 
+  const handleViewHistory = (bookId) => {
+    setHistoryModal({ isOpen: true, bookId })
+  }
+
+  const closeHistoryModal = () => {
+    setHistoryModal({ isOpen: false, bookId: null })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -112,6 +122,7 @@ function App() {
             books={books}
             onEdit={handleEdit}
             onDelete={handleDeleteBook}
+            onViewHistory={handleViewHistory}
             loading={loading}
           />
         </div>
@@ -122,6 +133,12 @@ function App() {
         onClose={cancelDelete}
         onConfirm={confirmDelete}
         bookTitle={deleteModal.book?.title || ''}
+      />
+
+      <BookHistoryModal
+        bookId={historyModal.bookId}
+        isOpen={historyModal.isOpen}
+        onClose={closeHistoryModal}
       />
     </div>
   )

@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: books-management-postgres
+    environment:
+      POSTGRES_DB: books_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - books-network
+
+  books-api:
+    build:
+      context: ./books-management-api
+      dockerfile: Dockerfile
+    container_name: books-management-api
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/books_management
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - books-network
+
+  books-frontend:
+    build:
+      context: ./books-management-frontend
+      dockerfile: Dockerfile
+    container_name: books-management-frontend
+    environment:
+      VITE_API_URL: http://books-api:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - books-api
+    networks:
+      - books-network
+
+volumes:
+  postgres_data:
+
+networks:
+  books-network:
+    driver: bridge
+

@@ -1,4 +1,4 @@
-package al.infnet.edu.br.books_management.config;
+package al.infnet.edu.br.books_management.infrastructure.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

@@ -3,12 +3,15 @@ package al.infnet.edu.br.books_management.domain.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.hibernate.envers.Audited;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity
 @Table(name = "books")
+@Audited
+@EntityListeners(al.infnet.edu.br.books_management.infrastructure.listener.BookAuditListener.class)
 public class Book {
 
     @Id

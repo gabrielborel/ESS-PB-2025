@@ -1,4 +1,4 @@
-function BookList({ books, onEdit, onDelete, onViewHistory, loading }) {
+function BookList({ books, onEdit, onDelete, onViewHistory, onViewReviews, loading }) {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -93,9 +93,15 @@ function BookList({ books, onEdit, onDelete, onViewHistory, loading }) {
                   </button>
                   <button
                     onClick={() => onViewHistory(book.id)}
-                    className="text-gray-600 hover:text-gray-900 font-medium"
+                    className="text-gray-600 hover:text-gray-900 mr-3 font-medium"
                   >
                     Histórico
+                  </button>
+                  <button
+                    onClick={() => onViewReviews(book)}
+                    className="text-purple-600 hover:text-purple-900 font-medium"
+                  >
+                    Avaliações
                   </button>
                 </td>
               </tr>

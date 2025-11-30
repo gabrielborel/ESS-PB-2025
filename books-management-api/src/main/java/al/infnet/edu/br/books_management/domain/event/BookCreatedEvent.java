@@ -1,0 +1,32 @@
+package al.infnet.edu.br.books_management.domain.event;
+
+public class BookCreatedEvent extends BookEvent {
+    private String title;
+    private String author;
+
+    public BookCreatedEvent() {
+        super();
+    }
+
+    public BookCreatedEvent(Long bookId, String title, String author) {
+        super(bookId, "BOOK_CREATED");
+        this.title = title;
+        this.author = author;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+}

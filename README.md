@@ -24,11 +24,13 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
    ┌───┴───┬──────────┴─────┐
    ▼       ▼                 ▼
 ┌─────┐ ┌──────┐      ┌──────────┐
-│Books│ │Reviews│     │          │
-│:8082│ │:8081 │      │          │
-└──┬──┘ └───┬──┘      └──────────┘
-   │        │
-   ▼        ▼
+│Books│ │Reviews│     │ RabbitMQ │
+│:8082│ │:8081 │      │  :5672   │
+└──┬──┘ └───┬──┘      └────┬─────┘
+   │        │               │
+   │        └───────────────┘
+   │                (events)
+   ▼
 ┌────────┐ ┌────────┐
 │Postgres│ │MongoDB │
 │ :5432  │ │:27017  │
@@ -39,6 +41,7 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 
 - **API Gateway (Spring Cloud Gateway)**: Roteamento inteligente e balanceamento de carga
 - **Consul**: Service Discovery e Health Checking
+- **RabbitMQ**: Message broker para comunicação assíncrona entre serviços
 - **Books Service**: Microsserviço de gerenciamento de livros (PostgreSQL)
 - **Reviews Service**: Microsserviço de avaliações (MongoDB)
 - **Frontend**: Interface React
@@ -48,12 +51,14 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 **Infraestrutura**
 - Spring Cloud Gateway
 - Consul (Service Discovery)
+- RabbitMQ (Message Broker)
 - Docker & Docker Compose
 
 **Books Service**
 - Java 21
 - Spring Boot 3.3.5
 - Spring Cloud 2023.0.3
+- Spring AMQP (Event Publishing)
 - PostgreSQL 16
 - Hibernate Envers (Auditoria)
 
@@ -61,6 +66,7 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 - Java 21
 - Spring Boot 3.3.5
 - Spring Cloud 2023.0.3
+- Spring AMQP (Event Consuming)
 - MongoDB 7
 
 **Frontend**
@@ -79,6 +85,7 @@ docker-compose up -d
 
 Isso sobe:
 - **Consul** (Service Discovery) na porta 8500
+- **RabbitMQ** (Message Broker) na porta 5672 (+ UI na porta 15672)
 - **PostgreSQL** na porta 5432
 - **MongoDB** na porta 27017
 - **API Gateway** na porta 8080
@@ -90,6 +97,7 @@ Isso sobe:
 - Frontend: `http://localhost:3000`
 - API Gateway: `http://localhost:8080`
 - Consul UI: `http://localhost:8500`
+- RabbitMQ UI: `http://localhost:15672` (admin/admin)
 
 Para parar tudo:
 ```bash
@@ -103,9 +111,9 @@ docker-compose up -d --build
 
 ### Desenvolvimento Local
 
-1. **Suba as dependências (Consul, PostgreSQL, MongoDB)**:
+1. **Suba as dependências (Consul, RabbitMQ, PostgreSQL, MongoDB)**:
 ```bash
-docker-compose up -d consul postgres mongodb
+docker-compose up -d consul rabbitmq postgres mongodb
 ```
 
 2. **Rode o API Gateway**:
@@ -161,16 +169,18 @@ npm run dev
 │   │   │   ├── dto/
 │   │   │   ├── mapper/
 │   │   │   └── service/
-│   │   ├── domain/                 # entidades, repositories, exceções
+│   │   ├── domain/                 # entidades, repositories, exceções, eventos
 │   │   │   ├── model/
 │   │   │   ├── repository/
-│   │   │   └── exception/
+│   │   │   ├── exception/
+│   │   │   └── event/              # BookCreatedEvent, BookUpdatedEvent, BookDeletedEvent
 │   │   ├── presentation/           # controllers, tratamento de exceções
 │   │   │   ├── controller/
 │   │   │   └── exception/
-│   │   └── infrastructure/         # configurações, listeners, eventos
+│   │   └── infrastructure/         # configurações, listeners, mensageria
 │   │       ├── config/             # (CORS, etc)
-│   │       └── listener/           # (auditoria)
+│   │       ├── listener/           # (auditoria)
+│   │       └── messaging/          # (RabbitMQ publisher)
 │   ├── src/main/resources/
 │   ├── Dockerfile
 │   └── pom.xml
@@ -181,14 +191,16 @@ npm run dev
 │   │   │   ├── dto/
 │   │   │   ├── mapper/
 │   │   │   └── service/
-│   │   ├── domain/                 # entidades, repositories
+│   │   ├── domain/                 # entidades, repositories, eventos
 │   │   │   ├── model/
-│   │   │   └── repository/
+│   │   │   ├── repository/
+│   │   │   └── event/              # BookCreatedEvent, BookDeletedEvent (mirror)
 │   │   ├── presentation/           # controllers, exception handling
 │   │   │   ├── controller/
 │   │   │   └── exception/
-│   │   └── infrastructure/         # configurações
-│   │       └── config/
+│   │   └── infrastructure/         # configurações, mensageria
+│   │       ├── config/
+│   │       └── messaging/          # (RabbitMQ consumer)
 │   ├── src/main/resources/
 │   ├── Dockerfile
 │   └── pom.xml
@@ -209,18 +221,28 @@ npm run dev
 ### Books Service
 - CRUD completo de livros
 - Histórico de alterações (Hibernate Envers)
+- Publicação de eventos (criação, atualização, deleção)
 - Validação de dados
 - PostgreSQL
 
 ### Reviews Service
 - Sistema de avaliações (1-5 estrelas)
 - Estatísticas por livro
+- Consumo de eventos (deleção em cascata)
 - Validação de dados
 - MongoDB
+
+### Mensageria (RabbitMQ)
+- **book.created.queue**: Eventos de criação de livros
+- **book.updated.queue**: Eventos de atualização de livros
+- **book.deleted.queue**: Eventos de deleção (trigger para deleção de reviews)
+- Topic Exchange: `books.exchange`
+- Comunicação assíncrona entre serviços
 
 ### Infraestrutura
 - Service Discovery (Consul)
 - API Gateway com load balancing
+- Event-driven architecture
 - Health checks automáticos
 - Docker Compose
 
@@ -237,15 +259,18 @@ npm run dev
 - API Gateway como ponto único de entrada
 - Service Discovery automático
 - Database per Service
+- Event-driven communication (RabbitMQ)
 
 ### Padrões de Código
 - **Clean Architecture**: Separação em camadas (domain, application, presentation, infrastructure)
 - **Repository Pattern**: Abstração de acesso a dados
 - **DTO Pattern**: Transferência de dados entre camadas
+- **Publisher-Subscriber**: Comunicação assíncrona via eventos
 
 ## Monitoramento
 
-- **Consul UI**: `http://localhost:8500`
+- **Consul UI**: `http://localhost:8500` - Status dos serviços registrados
+- **RabbitMQ Management**: `http://localhost:15672` - Filas, exchanges, mensagens (admin/admin)
 - **Spring Boot Actuator**: `/actuator/health` em cada serviço
 
 ## Troubleshooting

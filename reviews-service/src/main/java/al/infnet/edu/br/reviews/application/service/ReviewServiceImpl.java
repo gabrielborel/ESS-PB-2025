@@ -74,6 +74,16 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional
+    public void deleteAllByBookId(Long bookId) {
+        List<Review> reviews = reviewRepository.findByBookId(bookId);
+        if (!reviews.isEmpty()) {
+            reviewRepository.deleteAll(reviews);
+            System.out.println("Deletadas " + reviews.size() + " avaliações do livro " + bookId);
+        }
+    }
+
+    @Override
     public ReviewStatsDTO getBookStats(Long bookId) {
         Long totalReviews = reviewRepository.countByBookId(bookId);
         Double averageRating = reviewRepository.findAverageRatingByBookId(bookId);

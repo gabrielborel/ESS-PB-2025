@@ -21,5 +21,7 @@ public interface ReviewService {
     
     void deleteReview(String id);
     
+    void deleteAllByBookId(Long bookId);
+    
     ReviewStatsDTO getBookStats(Long bookId);
 }

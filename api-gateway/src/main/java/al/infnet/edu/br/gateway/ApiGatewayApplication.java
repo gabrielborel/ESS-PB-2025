@@ -1,4 +1,4 @@
-package al.infnet.edu.br.books_management;
+package al.infnet.edu.br.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,10 +6,9 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-public class BooksManagementApiApplication {
+public class ApiGatewayApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(BooksManagementApiApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(ApiGatewayApplication.class, args);
+    }
 }

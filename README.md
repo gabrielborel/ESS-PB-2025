@@ -30,6 +30,14 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
    │        │               │
    │        └───────────────┘
    │                (events)
+   │
+   │    ┌──────────┬──────────┐
+   │    │  Zipkin  │  Loki    │
+   │    │  :9411   │  :3100   │
+   │    └────┬─────┴────┬─────┘
+   │         │          │
+   │         └──────────┴─── Grafana :3001
+   │                         (monitoring)
    ▼
 ┌────────┐ ┌────────┐
 │Postgres│ │MongoDB │
@@ -42,6 +50,9 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 - **API Gateway (Spring Cloud Gateway)**: Roteamento inteligente e balanceamento de carga
 - **Consul**: Service Discovery e Health Checking
 - **RabbitMQ**: Message broker para comunicação assíncrona entre serviços
+- **Zipkin**: Distributed tracing para rastreamento de requisições
+- **Loki**: Agregação de logs centralizados
+- **Grafana**: Visualização de logs e métricas
 - **Books Service**: Microsserviço de gerenciamento de livros (PostgreSQL)
 - **Reviews Service**: Microsserviço de avaliações (MongoDB)
 - **Frontend**: Interface React
@@ -52,6 +63,8 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 - Spring Cloud Gateway
 - Consul (Service Discovery)
 - RabbitMQ (Message Broker)
+- Zipkin (Distributed Tracing)
+- Loki + Grafana (Log Aggregation & Monitoring)
 - Docker & Docker Compose
 
 **Books Service**
@@ -76,6 +89,16 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 
 ## Como rodar
 
+### Pré-requisitos
+
+Antes de executar o projeto, é necessário instalar o plugin do Docker para envio de logs ao Loki:
+
+```bash
+docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+```
+
+**Nota:** Este plugin precisa ser instalado **uma única vez em cada máquina** que for executar o projeto. Ele não é instalado automaticamente pelo docker-compose.
+
 ### Via Docker Compose (Recomendado)
 
 Na raiz do projeto:
@@ -86,6 +109,9 @@ docker-compose up -d
 Isso sobe:
 - **Consul** (Service Discovery) na porta 8500
 - **RabbitMQ** (Message Broker) na porta 5672 (+ UI na porta 15672)
+- **Zipkin** (Distributed Tracing) na porta 9411
+- **Loki** (Log Aggregation) na porta 3100
+- **Grafana** (Monitoring Dashboard) na porta 3001
 - **PostgreSQL** na porta 5432
 - **MongoDB** na porta 27017
 - **API Gateway** na porta 8080
@@ -98,6 +124,8 @@ Isso sobe:
 - API Gateway: `http://localhost:8080`
 - Consul UI: `http://localhost:8500`
 - RabbitMQ UI: `http://localhost:15672` (admin/admin)
+- Zipkin UI: `http://localhost:9411`
+- Grafana: `http://localhost:3001` (admin/admin)
 
 Para parar tudo:
 ```bash
@@ -111,9 +139,9 @@ docker-compose up -d --build
 
 ### Desenvolvimento Local
 
-1. **Suba as dependências (Consul, RabbitMQ, PostgreSQL, MongoDB)**:
+1. **Suba as dependências (Consul, RabbitMQ, Zipkin, Loki, Grafana, PostgreSQL, MongoDB)**:
 ```bash
-docker-compose up -d consul rabbitmq postgres mongodb
+docker-compose up -d consul rabbitmq zipkin loki grafana postgres mongodb
 ```
 
 2. **Rode o API Gateway**:
@@ -243,6 +271,8 @@ npm run dev
 - Service Discovery (Consul)
 - API Gateway com load balancing
 - Event-driven architecture
+- Distributed tracing (Zipkin)
+- Centralized logging (Loki + Grafana)
 - Health checks automáticos
 - Docker Compose
 
@@ -267,10 +297,92 @@ npm run dev
 - **DTO Pattern**: Transferência de dados entre camadas
 - **Publisher-Subscriber**: Comunicação assíncrona via eventos
 
-## Monitoramento
+## Monitoramento e Observabilidade
 
+### Distributed Tracing (Zipkin)
+- **URL**: `http://localhost:9411`
+- Rastreamento de requisições através dos microsserviços
+- Visualização de latência e dependências
+- Identificação de gargalos de performance
+
+### Log Aggregation (Loki + Grafana)
+- **Grafana**: `http://localhost:3001` (admin/admin)
+- **Loki**: `http://localhost:3100` (API)
+- Logs centralizados de todos os serviços em formato JSON
+- Queries avançadas com LogQL
+- Correlação de logs com traces
+- **Dashboard pré-configurado** carregado automaticamente
+
+**Dashboard "Microsserviços - Log Aggregation":**
+
+O dashboard é provisionado automaticamente e inclui:
+- Gráfico de volume de logs por serviço
+- Contadores de logs por nível (ERROR/WARN/INFO)
+- Taxa de logs por segundo
+- Painel de erros em tempo real
+- Últimos logs de cada serviço (Gateway, Books, Reviews)
+- Logs de eventos RabbitMQ (publicação e consumo)
+
+**Acesso rápido:**
+1. Acesse `http://localhost:3001` (admin/admin)
+2. Vá em "Dashboards" no menu lateral
+3. Clique em "Microsserviços - Log Aggregation"
+
+**Uso avançado (Explore):**
+1. Vá em "Explore" no menu lateral
+2. Selecione o datasource "Loki"
+3. Use queries LogQL:
+   - `{service="books-service"}` - Logs do Books Service
+   - `{service="reviews-service"} |= "error"` - Filtrar erros
+   - `{service="api-gateway"} |= "POST"` - Requisições POST
+   - `{service=~".+"} |= "Evento recebido"` - Eventos RabbitMQ
+
+### Service Discovery & Health
 - **Consul UI**: `http://localhost:8500` - Status dos serviços registrados
 - **RabbitMQ Management**: `http://localhost:15672` - Filas, exchanges, mensagens (admin/admin)
 - **Spring Boot Actuator**: `/actuator/health` em cada serviço
+
+## Implantação em Kubernetes
+
+O sistema pode ser implantado em Kubernetes usando **Kind (Kubernetes in Docker)** para desenvolvimento local.
+
+### Pré-requisitos
+
+```bash
+# Instalar Kind (macOS)
+brew install kind
+```
+
+### Deploy
+
+```bash
+cd k8s
+./deploy.sh
+```
+
+O script cria o cluster Kind, builda as imagens Docker, carrega no cluster e faz o deploy de todos os serviços.
+
+### Cleanup
+
+```bash
+cd k8s
+./cleanup.sh
+```
+
+### URLs de Acesso
+
+Com Kind, todos os serviços ficam acessíveis diretamente:
+- 📱 **Frontend**: http://localhost:3000
+- 🚪 **API Gateway**: http://localhost:8080
+- 📊 **Grafana**: http://localhost:3001 (admin/admin)
+- 🔍 **Zipkin**: http://localhost:9411
+- 🏥 **Consul**: http://localhost:8500
+- 🐰 **RabbitMQ**: http://localhost:15672 (admin/admin)
+
+### Por que Kind?
+- ✅ **Mais leve** que Minikube (usa containers ao invés de VMs)
+- ✅ **Acesso direto** via localhost (sem tunelamento)
+- ✅ **Rápido** para iniciar e parar (~30s)
+- ✅ **Menos recursos** (~2GB RAM total)
 
 ## Troubleshooting

@@ -71,6 +71,59 @@ services:
       timeout: 5s
       retries: 5
 
+  # Distributed Tracing - Zipkin
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Log Aggregation - Loki
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Monitoring & Visualization - Grafana
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # API Gateway
   api-gateway:
     build:
@@ -82,10 +135,22 @@ services:
     depends_on:
       consul:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
     networks:
       - microservices-network
     environment:
       SPRING_PROFILES_ACTIVE: docker
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-retries: "5"
+        loki-batch-size: "400"
+        labels: "service"
+        loki-external-labels: "service=api-gateway"
 
   # Books Microservice
   books-service:
@@ -98,17 +163,29 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
       SPRING_PROFILES_ACTIVE: docker
-    ports:
-      - "8082:8082"
     depends_on:
-      postgres:
-        condition: service_healthy
       consul:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
     networks:
       - microservices-network
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-retries: "5"
+        loki-batch-size: "400"
+        labels: "service"
+        loki-external-labels: "service=books-service"
 
   # Reviews Microservice
   reviews-service:
@@ -127,8 +204,20 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      zipkin:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
     networks:
       - microservices-network
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-retries: "5"
+        loki-batch-size: "400"
+        labels: "service"
+        loki-external-labels: "service=reviews-service"
 
   # Frontend
   books-frontend:
@@ -148,6 +237,7 @@ services:
 volumes:
   postgres_data:
   mongodb_data:
+  grafana_data:
 
 networks:
   microservices-network:

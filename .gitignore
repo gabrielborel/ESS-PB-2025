@@ -7,6 +7,23 @@ books-management-api/*.class
 books-management-api/.mvn/
 books-management-api/mvnw
 books-management-api/mvnw.cmd
+reviews-service/target/
+reviews-service/*.jar
+reviews-service/*.war
+reviews-service/*.ear
+reviews-service/*.class
+reviews-service/.mvn/
+reviews-service/mvnw
+reviews-service/mvnw.cmd
+books-management-api/mvnw.cmd
+api-gateway/target/
+api-gateway/*.jar
+api-gateway/*.war
+api-gateway/*.ear
+api-gateway/*.class
+api-gateway/.mvn/
+api-gateway/mvnw
+api-gateway/mvnw.cmd
 
 # Node / React (Frontend)
 books-management-frontend/node_modules/

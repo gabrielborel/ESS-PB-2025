@@ -1,0 +1,186 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: books-system
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+      log_level: info
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+        backoff_config:
+          min_period: 100ms
+          max_period: 10s
+          max_retries: 10
+        timeout: 10s
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - books-system
+
+        pipeline_stages:
+          - cri: {}
+
+        relabel_configs:
+          # Filtra apenas pods com label app
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: .+
+          
+          # Ignora pods do sistema de logging
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: drop
+            regex: (promtail|loki|grafana)
+          
+          # Job = nome da app
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: job
+          
+          # Service label (para compatibilidade com dashboard do docker-compose)
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: service
+          
+          # App label
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+          
+          # Pod name
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          
+          # Namespace
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          
+          # Container name
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          
+          # Node name
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+
+          # Define o caminho dos logs para containerd/KIND
+          # Usa glob pattern com * para encontrar o diretório correto
+          - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+            action: replace
+            regex: ([^;]+);([^;]+)
+            replacement: /var/log/pods/*$1/$2/*.log
+            target_label: __path__
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: books-system
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      serviceAccountName: promtail
+      containers:
+      - name: promtail
+        image: grafana/promtail:2.9.3
+        args:
+          - -config.file=/etc/promtail/promtail.yaml
+          - -config.expand-env=true
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /etc/promtail
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: varlogpods
+          mountPath: /var/log/pods
+          readOnly: true
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        ports:
+        - containerPort: 9080
+          name: http-metrics
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        securityContext:
+          privileged: true
+          runAsUser: 0
+      volumes:
+      - name: config
+        configMap:
+          name: promtail-config
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlogpods
+        hostPath:
+          path: /var/log/pods
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: books-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "watch", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail
+subjects:
+  - kind: ServiceAccount
+    name: promtail
+    namespace: books-system
+roleRef:
+  kind: ClusterRole
+  name: promtail
+  apiGroup: rbac.authorization.k8s.io

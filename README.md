@@ -30,6 +30,14 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
    │        │               │
    │        └───────────────┘
    │                (events)
+   │
+   │    ┌──────────┬──────────┐
+   │    │  Zipkin  │  Loki    │
+   │    │  :9411   │  :3100   │
+   │    └────┬─────┴────┬─────┘
+   │         │          │
+   │         └──────────┴─── Grafana :3001
+   │                         (monitoring)
    ▼
 ┌────────┐ ┌────────┐
 │Postgres│ │MongoDB │
@@ -42,6 +50,9 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 - **API Gateway (Spring Cloud Gateway)**: Roteamento inteligente e balanceamento de carga
 - **Consul**: Service Discovery e Health Checking
 - **RabbitMQ**: Message broker para comunicação assíncrona entre serviços
+- **Zipkin**: Distributed tracing para rastreamento de requisições
+- **Loki**: Agregação de logs centralizados
+- **Grafana**: Visualização de logs e métricas
 - **Books Service**: Microsserviço de gerenciamento de livros (PostgreSQL)
 - **Reviews Service**: Microsserviço de avaliações (MongoDB)
 - **Frontend**: Interface React
@@ -52,6 +63,8 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 - Spring Cloud Gateway
 - Consul (Service Discovery)
 - RabbitMQ (Message Broker)
+- Zipkin (Distributed Tracing)
+- Loki + Grafana (Log Aggregation & Monitoring)
 - Docker & Docker Compose
 
 **Books Service**
@@ -76,6 +89,16 @@ Sistema distribuído para gerenciar livros e avaliações. Implementado com Spri
 
 ## Como rodar
 
+### Pré-requisitos
+
+Antes de executar o projeto, é necessário instalar o plugin do Docker para envio de logs ao Loki:
+
+```bash
+docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+```
+
+**Nota:** Este plugin precisa ser instalado **uma única vez em cada máquina** que for executar o projeto. Ele não é instalado automaticamente pelo docker-compose.
+
 ### Via Docker Compose (Recomendado)
 
 Na raiz do projeto:
@@ -86,6 +109,9 @@ docker-compose up -d
 Isso sobe:
 - **Consul** (Service Discovery) na porta 8500
 - **RabbitMQ** (Message Broker) na porta 5672 (+ UI na porta 15672)
+- **Zipkin** (Distributed Tracing) na porta 9411
+- **Loki** (Log Aggregation) na porta 3100
+- **Grafana** (Monitoring Dashboard) na porta 3001
 - **PostgreSQL** na porta 5432
 - **MongoDB** na porta 27017
 - **API Gateway** na porta 8080
@@ -98,6 +124,8 @@ Isso sobe:
 - API Gateway: `http://localhost:8080`
 - Consul UI: `http://localhost:8500`
 - RabbitMQ UI: `http://localhost:15672` (admin/admin)
+- Zipkin UI: `http://localhost:9411`
+- Grafana: `http://localhost:3001` (admin/admin)
 
 Para parar tudo:
 ```bash
@@ -111,9 +139,9 @@ docker-compose up -d --build
 
 ### Desenvolvimento Local
 
-1. **Suba as dependências (Consul, RabbitMQ, PostgreSQL, MongoDB)**:
+1. **Suba as dependências (Consul, RabbitMQ, Zipkin, Loki, Grafana, PostgreSQL, MongoDB)**:
 ```bash
-docker-compose up -d consul rabbitmq postgres mongodb
+docker-compose up -d consul rabbitmq zipkin loki grafana postgres mongodb
 ```
 
 2. **Rode o API Gateway**:
@@ -216,61 +244,48 @@ npm run dev
 └── docker-compose.yml              # Orquestração de todos os serviços
 ```
 
-## Features
-
-### Books Service
-- CRUD completo de livros
-- Histórico de alterações (Hibernate Envers)
-- Publicação de eventos (criação, atualização, deleção)
-- Validação de dados
-- PostgreSQL
-
-### Reviews Service
-- Sistema de avaliações (1-5 estrelas)
-- Estatísticas por livro
-- Consumo de eventos (deleção em cascata)
-- Validação de dados
-- MongoDB
-
-### Mensageria (RabbitMQ)
-- **book.created.queue**: Eventos de criação de livros
-- **book.updated.queue**: Eventos de atualização de livros
-- **book.deleted.queue**: Eventos de deleção (trigger para deleção de reviews)
-- Topic Exchange: `books.exchange`
-- Comunicação assíncrona entre serviços
-
-### Infraestrutura
-- Service Discovery (Consul)
-- API Gateway com load balancing
-- Event-driven architecture
-- Health checks automáticos
-- Docker Compose
-
-### Frontend
-- Interface responsiva
-- CRUD de livros
-- Sistema de avaliações interativo
-- Modal de confirmação
-
-## Arquitetura e Padrões
-
-### Microservices Architecture
-- Serviços independentes e especializados
-- API Gateway como ponto único de entrada
-- Service Discovery automático
-- Database per Service
-- Event-driven communication (RabbitMQ)
-
-### Padrões de Código
-- **Clean Architecture**: Separação em camadas (domain, application, presentation, infrastructure)
-- **Repository Pattern**: Abstração de acesso a dados
-- **DTO Pattern**: Transferência de dados entre camadas
-- **Publisher-Subscriber**: Comunicação assíncrona via eventos
-
 ## Monitoramento
 
-- **Consul UI**: `http://localhost:8500` - Status dos serviços registrados
-- **RabbitMQ Management**: `http://localhost:15672` - Filas, exchanges, mensagens (admin/admin)
-- **Spring Boot Actuator**: `/actuator/health` em cada serviço
+- **Zipkin**: `http://localhost:9411` - Distributed tracing
+- **Grafana**: `http://localhost:3001` (admin/admin) - Dashboard de logs
+- **Consul**: `http://localhost:8500` - Service discovery
+- **RabbitMQ**: `http://localhost:15672` (admin/admin) - Filas e mensagens
+
+## Implantação em Kubernetes
+
+O sistema pode ser implantado em Kubernetes usando **Kind (Kubernetes in Docker)** para desenvolvimento local.
+
+### Pré-requisitos
+
+```bash
+# Instalar Kind (macOS)
+brew install kind
+```
+
+### Deploy
+
+```bash
+cd k8s
+./deploy.sh
+```
+
+O script cria o cluster Kind, builda as imagens Docker, carrega no cluster e faz o deploy de todos os serviços.
+
+### Cleanup
+
+```bash
+cd k8s
+./cleanup.sh
+```
+
+### URLs de Acesso
+
+Com Kind, os serviços ficam acessíveis em:
+- **Frontend**: http://localhost:3000
+- **API Gateway**: http://localhost:8080
+- **Grafana**: http://localhost:3001 (admin/admin)
+- **Zipkin**: http://localhost:9411
+- **Consul**: http://localhost:8500
+- **RabbitMQ**: http://localhost:15672 (admin/admin)
 
 ## Troubleshooting

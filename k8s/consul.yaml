@@ -1,0 +1,76 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consul
+  namespace: books-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consul
+  template:
+    metadata:
+      labels:
+        app: consul
+    spec:
+      containers:
+      - name: consul
+        image: hashicorp/consul:1.18
+        args:
+        - agent
+        - -server
+        - -ui
+        - -bootstrap-expect=1
+        - -client=0.0.0.0
+        - -bind=0.0.0.0
+        ports:
+        - containerPort: 8500
+          name: ui
+        - containerPort: 8600
+          name: dns
+        volumeMounts:
+        - name: consul-storage
+          mountPath: /consul/data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /v1/status/leader
+            port: 8500
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v1/status/leader
+            port: 8500
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: consul-storage
+        persistentVolumeClaim:
+          claimName: consul-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consul
+  namespace: books-system
+spec:
+  selector:
+    app: consul
+  ports:
+  - port: 8500
+    targetPort: 8500
+    nodePort: 30500
+    name: ui
+  - port: 8600
+    targetPort: 8600
+    name: dns
+  type: NodePort

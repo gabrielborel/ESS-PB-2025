@@ -244,103 +244,12 @@ npm run dev
 └── docker-compose.yml              # Orquestração de todos os serviços
 ```
 
-## Features
+## Monitoramento
 
-### Books Service
-- CRUD completo de livros
-- Histórico de alterações (Hibernate Envers)
-- Publicação de eventos (criação, atualização, deleção)
-- Validação de dados
-- PostgreSQL
-
-### Reviews Service
-- Sistema de avaliações (1-5 estrelas)
-- Estatísticas por livro
-- Consumo de eventos (deleção em cascata)
-- Validação de dados
-- MongoDB
-
-### Mensageria (RabbitMQ)
-- **book.created.queue**: Eventos de criação de livros
-- **book.updated.queue**: Eventos de atualização de livros
-- **book.deleted.queue**: Eventos de deleção (trigger para deleção de reviews)
-- Topic Exchange: `books.exchange`
-- Comunicação assíncrona entre serviços
-
-### Infraestrutura
-- Service Discovery (Consul)
-- API Gateway com load balancing
-- Event-driven architecture
-- Distributed tracing (Zipkin)
-- Centralized logging (Loki + Grafana)
-- Health checks automáticos
-- Docker Compose
-
-### Frontend
-- Interface responsiva
-- CRUD de livros
-- Sistema de avaliações interativo
-- Modal de confirmação
-
-## Arquitetura e Padrões
-
-### Microservices Architecture
-- Serviços independentes e especializados
-- API Gateway como ponto único de entrada
-- Service Discovery automático
-- Database per Service
-- Event-driven communication (RabbitMQ)
-
-### Padrões de Código
-- **Clean Architecture**: Separação em camadas (domain, application, presentation, infrastructure)
-- **Repository Pattern**: Abstração de acesso a dados
-- **DTO Pattern**: Transferência de dados entre camadas
-- **Publisher-Subscriber**: Comunicação assíncrona via eventos
-
-## Monitoramento e Observabilidade
-
-### Distributed Tracing (Zipkin)
-- **URL**: `http://localhost:9411`
-- Rastreamento de requisições através dos microsserviços
-- Visualização de latência e dependências
-- Identificação de gargalos de performance
-
-### Log Aggregation (Loki + Grafana)
-- **Grafana**: `http://localhost:3001` (admin/admin)
-- **Loki**: `http://localhost:3100` (API)
-- Logs centralizados de todos os serviços em formato JSON
-- Queries avançadas com LogQL
-- Correlação de logs com traces
-- **Dashboard pré-configurado** carregado automaticamente
-
-**Dashboard "Microsserviços - Log Aggregation":**
-
-O dashboard é provisionado automaticamente e inclui:
-- Gráfico de volume de logs por serviço
-- Contadores de logs por nível (ERROR/WARN/INFO)
-- Taxa de logs por segundo
-- Painel de erros em tempo real
-- Últimos logs de cada serviço (Gateway, Books, Reviews)
-- Logs de eventos RabbitMQ (publicação e consumo)
-
-**Acesso rápido:**
-1. Acesse `http://localhost:3001` (admin/admin)
-2. Vá em "Dashboards" no menu lateral
-3. Clique em "Microsserviços - Log Aggregation"
-
-**Uso avançado (Explore):**
-1. Vá em "Explore" no menu lateral
-2. Selecione o datasource "Loki"
-3. Use queries LogQL:
-   - `{service="books-service"}` - Logs do Books Service
-   - `{service="reviews-service"} |= "error"` - Filtrar erros
-   - `{service="api-gateway"} |= "POST"` - Requisições POST
-   - `{service=~".+"} |= "Evento recebido"` - Eventos RabbitMQ
-
-### Service Discovery & Health
-- **Consul UI**: `http://localhost:8500` - Status dos serviços registrados
-- **RabbitMQ Management**: `http://localhost:15672` - Filas, exchanges, mensagens (admin/admin)
-- **Spring Boot Actuator**: `/actuator/health` em cada serviço
+- **Zipkin**: `http://localhost:9411` - Distributed tracing
+- **Grafana**: `http://localhost:3001` (admin/admin) - Dashboard de logs
+- **Consul**: `http://localhost:8500` - Service discovery
+- **RabbitMQ**: `http://localhost:15672` (admin/admin) - Filas e mensagens
 
 ## Implantação em Kubernetes
 
@@ -371,18 +280,12 @@ cd k8s
 
 ### URLs de Acesso
 
-Com Kind, todos os serviços ficam acessíveis diretamente:
-- 📱 **Frontend**: http://localhost:3000
-- 🚪 **API Gateway**: http://localhost:8080
-- 📊 **Grafana**: http://localhost:3001 (admin/admin)
-- 🔍 **Zipkin**: http://localhost:9411
-- 🏥 **Consul**: http://localhost:8500
-- 🐰 **RabbitMQ**: http://localhost:15672 (admin/admin)
-
-### Por que Kind?
-- ✅ **Mais leve** que Minikube (usa containers ao invés de VMs)
-- ✅ **Acesso direto** via localhost (sem tunelamento)
-- ✅ **Rápido** para iniciar e parar (~30s)
-- ✅ **Menos recursos** (~2GB RAM total)
+Com Kind, os serviços ficam acessíveis em:
+- **Frontend**: http://localhost:3000
+- **API Gateway**: http://localhost:8080
+- **Grafana**: http://localhost:3001 (admin/admin)
+- **Zipkin**: http://localhost:9411
+- **Consul**: http://localhost:8500
+- **RabbitMQ**: http://localhost:15672 (admin/admin)
 
 ## Troubleshooting

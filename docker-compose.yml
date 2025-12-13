@@ -1,5 +1,4 @@
 services:
-  # Service Discovery - Consul
   consul:
     image: hashicorp/consul:1.18
     container_name: consul
@@ -15,7 +14,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Database - PostgreSQL
   postgres:
     image: postgres:16-alpine
     container_name: books-postgres
@@ -35,7 +33,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Database - MongoDB
   mongodb:
     image: mongo:7
     container_name: reviews-mongodb
@@ -61,8 +58,8 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
     ports:
-      - "5672:5672"    # AMQP protocol
-      - "15672:15672"  # Management UI
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - microservices-network
     healthcheck:
@@ -71,7 +68,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Distributed Tracing - Zipkin
   zipkin:
     image: openzipkin/zipkin:latest
     container_name: zipkin
@@ -85,7 +81,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Log Aggregation - Loki
   loki:
     image: grafana/loki:2.9.3
     container_name: loki
@@ -100,7 +95,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Monitoring & Visualization - Grafana
   grafana:
     image: grafana/grafana:10.2.3
     container_name: grafana
@@ -119,12 +113,12 @@ services:
     networks:
       - microservices-network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # API Gateway
   api-gateway:
     build:
       context: ./api-gateway
@@ -152,7 +146,6 @@ services:
         labels: "service"
         loki-external-labels: "service=api-gateway"
 
-  # Books Microservice
   books-service:
     build:
       context: ./books-management-api
@@ -187,7 +180,6 @@ services:
         labels: "service"
         loki-external-labels: "service=books-service"
 
-  # Reviews Microservice
   reviews-service:
     build:
       context: ./reviews-service
@@ -219,7 +211,6 @@ services:
         labels: "service"
         loki-external-labels: "service=reviews-service"
 
-  # Frontend
   books-frontend:
     build:
       context: ./books-management-frontend

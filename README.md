@@ -54,21 +54,8 @@ cd k8s && ./deploy.sh
 cd k8s && ./cleanup.sh
 ```
 
-**URLs (NodePort):**
-| Serviço | Porta |
-|---------|-------|
-| Frontend | 30000 |
-| API Gateway | 30080 |
-| Grafana | 30001 |
-| Zipkin | 30411 |
-| Consul | 30500 |
-| RabbitMQ | 30672 |
-
-```bash
-# Pegar IP do Minikube
-minikube ip
-# Acessar: http://<IP>:<PORTA>
-```
+**URLs**
+Ao finalizar o comando de deploy as URLs para acessar os serviços serão exibidas no terminal.
 
 ### Dev Local
 
